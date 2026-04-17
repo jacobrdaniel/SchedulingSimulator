@@ -30,7 +30,7 @@ void task_DestructTask(task_t * task)
   free(task);
 }
 
-bool task_IsFinsihed(task_t * task)
+bool task_HasFinished(task_t * task)
 {
   assert(task);
   if (task->rst <= 0) return true;
@@ -183,19 +183,19 @@ bool queue_IsEmpty(queue_t * queue)
   else return false;
 }
 
-sim_t * sim_ConstructSim(const char * readfrom, policy_t policy, unsigned q)
+machine_t * machine_ConstructMachine(const char * readfrom, policy_t policy, unsigned q)
 {
   assert(readfrom);
 
-  sim_t * sim = (sim_t *)malloc(sizeof(sim_t));
+  machine_t * machine = (machine_t *)malloc(sizeof(machine_t));
 
-  sim->policy = policy;
-  sim->counter = 0;
+  machine->policy = policy;
+  machine->counter = 0;
 
-  sim->inactive = queue_ConstructQueue();
-  sim->active   = queue_ConstructQueue();
-  sim->finsihed = queue_ConstructQueue();
-  sim->quantum  = q;
+  machine->inactive = queue_ConstructQueue();
+  machine->active   = queue_ConstructQueue();
+  machine->finished = queue_ConstructQueue();
+  machine->quantum  = q;
 
   FILE * fileptr = fopen(readfrom, "r");
   int temp_service, temp_arrival, tid_counter;
@@ -206,30 +206,117 @@ sim_t * sim_ConstructSim(const char * readfrom, policy_t policy, unsigned q)
     if (temp_arrival > 0)
     {
       if (policy == SJF)
-        queue_InsertSJF(sim->inactive, task_ConstructTask(tid_counter, temp_arrival, temp_service));
+        queue_InsertSJF(machine->inactive, task_ConstructTask(tid_counter, temp_arrival, temp_service));
       else
-        queue_InsertBack(sim->inactive, task_ConstructTask(tid_counter, temp_arrival, temp_service));
+        queue_InsertFront(machine->inactive, task_ConstructTask(tid_counter, temp_arrival, temp_service));
     }
     else
     {
       if (policy == SJF)
-        queue_InsertSJF(sim->active, task_ConstructTask(tid_counter, temp_arrival, temp_service));
+        queue_InsertSJF(machine->active, task_ConstructTask(tid_counter, temp_arrival, temp_service));
       else
-        queue_InsertBack(sim->active, task_ConstructTask(tid_counter, temp_arrival, temp_service));
+        queue_InsertFront(machine->active, task_ConstructTask(tid_counter, temp_arrival, temp_service));
     }
   }
   fclose(fileptr); 
-  return sim;
+  return machine;
 }
 
 
-void sim_DestructSim(sim_t * sim)
+void machine_DestructMachine(machine_t * machine)
 {
-  assert(sim);
+  assert(machine);
 
-  queue_DestructQueue(sim->inactive);
-  queue_DestructQueue(sim->active);
-  queue_DestructQueue(sim->finsihed);
+  queue_DestructQueue(machine->inactive);
+  queue_DestructQueue(machine->active);
+  queue_DestructQueue(machine->finished);
 
-  free(sim);
+  free(machine);
+}
+
+void machine_CheckForArrivals(machine_t * machine)
+{
+  assert(machine);
+
+  task_t * temp;
+  task_t * front = machine->inactive->front;
+  size_t index = 0;
+
+  while (front)
+  {
+    temp  = front;
+    front = front->next;
+    
+    if (task_HasArrived(temp, machine->counter))
+    {
+      temp = queue_RemoveIndex(machine->inactive, index);
+
+      if (machine->policy == SJF)
+        queue_InsertSJF(machine->active, temp);
+      else
+        queue_InsertBack(machine->active, temp);
+    }
+    index++;
+  }
+}
+
+
+void machine_CheckForFinished(machine_t * machine)
+{
+  assert(machine);
+
+  task_t * temp;
+  task_t * front = machine->active->front;
+  size_t index = 0;
+
+  while (front)
+  {
+    temp = front;
+    front = front->next;
+
+    if (task_HasFinished(temp))
+    {
+      temp = queue_RemoveIndex(machine->active, index);
+      // TODO: Write function to calculate statistics for performance metrics.
+      queue_InsertBack(machine->finished, temp);
+    }
+
+    index++;
+  }
+}
+
+
+void machine_AllocateResources(machine_t * machine)
+{
+  assert(machine);
+  
+  machine_CheckForArrivals(machine);
+  
+  if (machine->policy == RR)
+  {
+    task_t * rover = machine->active->front;
+    while (rover)
+    {
+      rover->rst -= machine->quantum;
+      if (rover->rst < 0)
+        rover->rst = 0;
+      rover = rover->next;
+    }
+  }
+  else
+  {
+    task_t * front = machine->active->front;
+    front->rst -= machine->quantum;
+    if (front->rst < 0)
+      front->rst = 0;
+  }
+}
+
+void machine_PerformFullCycle(machine_t * machine)
+{
+  assert(machine);
+  machine_CheckForArrivals(machine);
+  machine_AllocateResources(machine);
+  machine->counter++;
+  machine_CheckForFinished(machine);
 }

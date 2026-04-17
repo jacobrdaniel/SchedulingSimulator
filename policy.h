@@ -1,4 +1,7 @@
 
+# ifndef __POLICY_H__
+# define __POLICY_H__
+
 # include <stddef.h>
 # include <stdbool.h>
 
@@ -7,11 +10,11 @@
 typedef enum PolicyType policy_t;
 typedef struct TaskType task_t;
 typedef struct QueueType queue_t;
-typedef struct SimulatorType sim_t;
+typedef struct MachineType machine_t;
 
 task_t * task_ConstructTask(int tid, int arrival, int service);
 void task_DestructTask(task_t * task);
-bool task_IsFinsihed(task_t * task);
+bool task_HasFinished(task_t * task);
 bool task_HasArrived(task_t * task, size_t currtime);
 
 
@@ -22,11 +25,15 @@ void queue_InsertBack(queue_t * queue, task_t * task);
 void queue_InsertSJF(queue_t * queue, task_t * tasK);
 task_t * queue_RemoveFront(queue_t * queue);
 task_t * queue_RemoveBack(queue_t * queue);
+task_t * queue_RemoveIndex(queue_t * queue, size_t index);
 bool queue_IsEmpty(queue_t * queue);
 
-sim_t * sim_ConstructSim(const char * readfrom, policy_t policy, unsigned q);
-void sim_DestructSim(sim_t * sim);
-
+machine_t * machine_ConstructMachine(const char * readfrom, policy_t policy, unsigned q);
+void machine_DestructMachine(machine_t * machine);
+void machine_CheckForArrivals(machine_t * machine);
+void machine_CheckForFinished(machine_t * machine);
+void machine_AllocateResources(machine_t * machine);
+void machine_PerformFullCycle(machine_t * machine);
 
 enum PolicyType
 {
@@ -56,20 +63,15 @@ struct QueueType
   size_t length;
 };
 
-struct SimulatorType
+struct MachineType
 {
   queue_t * inactive;
   queue_t * active;
-  queue_t * finsihed;
+  queue_t * finished;
   
   unsigned quantum; // Time quantum (custom for RR, 1 otherwise).
   size_t counter; // Internal counter to track simulation time
   policy_t policy; 
 };
 
-
-
-
-
-
-
+# endif
