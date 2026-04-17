@@ -200,7 +200,7 @@ sim_t * sim_ConstructSim(const char * readfrom, policy_t policy, unsigned q)
   FILE * fileptr = fopen(readfrom, "r");
   int temp_service, temp_arrival, tid_counter;
 
-  while (scanf("%d %d", &temp_service, &temp_arrival))
+  while (fscanf(fileptr, "%d %d", &temp_service, &temp_arrival))
   {
     tid_counter++;
     if (temp_arrival > 0)
@@ -218,7 +218,7 @@ sim_t * sim_ConstructSim(const char * readfrom, policy_t policy, unsigned q)
         queue_InsertBack(sim->active, task_ConstructTask(tid_counter, temp_arrival, temp_service));
     }
   }
-
+  fclose(fileptr); 
   return sim;
 }
 
