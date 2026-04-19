@@ -5,7 +5,9 @@
 # include <assert.h>
 # include "policy.h"
 
-
+/**
+ * Constructor for task_t structure types. 
+ */
 task_t * task_ConstructTask(int tid, int arrival, int service)
 {
   task_t * task = (task_t *)malloc(sizeof(task_t));
@@ -24,12 +26,19 @@ task_t * task_ConstructTask(int tid, int arrival, int service)
   return task;
 }
 
+/**
+ * Destructor for task_t structure types. 
+ */
 void task_DestructTask(task_t * task)
 {
   assert(task);
   free(task);
 }
 
+/**
+ * Boolean function which returns true if a 
+ * task has finished in the simulation, false otherwise.
+ */
 bool task_HasFinished(task_t * task)
 {
   assert(task);
@@ -37,6 +46,10 @@ bool task_HasFinished(task_t * task)
   else return false;
 }
 
+/**
+ * Boolean function which returns true if a task has "arrived"
+ * to the ready (or "active") queue in the simulation, false otherwise.
+ */
 bool task_HasArrived(task_t * task, size_t currtime)
 {
   assert(task);
@@ -44,12 +57,18 @@ bool task_HasArrived(task_t * task, size_t currtime)
   else return false;
 }
 
+/**
+ * Constructor for queue_t structure types.
+ */
 queue_t * queue_ConstructQueue(void)
 {
   queue_t * queue = (queue_t *)calloc(1, sizeof(queue_t));
   return queue;
 }
 
+/**
+ * Destructor for queue_t structure types.
+ */
 void queue_DestructQueue(queue_t * queue)
 {
   assert(queue);
@@ -60,6 +79,9 @@ void queue_DestructQueue(queue_t * queue)
   free(queue);
 }
 
+/**
+ * Inserts a task at the front of the queue.
+ */
 void queue_InsertFront(queue_t * queue, task_t * task)
 {
   assert(queue);
@@ -80,6 +102,9 @@ void queue_InsertFront(queue_t * queue, task_t * task)
   queue->length++;
 }
 
+/**
+ * Inserts a task at the back of the queue.
+ */
 void queue_InsertBack(queue_t * queue, task_t * task)
 {
   assert(queue);
@@ -100,6 +125,10 @@ void queue_InsertBack(queue_t * queue, task_t * task)
   queue->length++;
 }
 
+/**
+ * Special insertion function for running simulations 
+ * where the policy in place is SJF.
+ */
 void queue_InsertSJF(queue_t * queue, task_t * task)
 {
   assert(queue);
@@ -127,6 +156,7 @@ void queue_InsertSJF(queue_t * queue, task_t * task)
   queue->length++;
 }
 
+
 task_t * queue_RemoveFront(queue_t * queue)
 {
   assert(queue);
@@ -152,6 +182,7 @@ task_t * queue_RemoveFront(queue_t * queue)
   return front;
 }
 
+
 task_t * queue_RemoveBack(queue_t * queue)
 {
   assert(queue);
@@ -176,12 +207,38 @@ task_t * queue_RemoveBack(queue_t * queue)
   return back;
 }
 
+task_t * queue_RemoveIndex(queue_t * queue, size_t index)
+{
+  assert(queue);
+  if ((index < 0) || (index >= queue->length))
+    return NULL;
+  else if (index == 0)
+    return queue_RemoveFront(queue);
+  else if (index == queue->length - 1)
+    return queue_RemoveBack(queue);
+  
+  task_t * rover = queue->front;
+  for (size_t i = 0; i < index; i++)
+    rover = rover->next;
+  
+  rover->next->prev = rover->prev;
+  rover->prev->next = rover->next;
+
+  rover->next = NULL;
+  rover->prev = NULL;
+
+  queue->length--;
+  return rover;
+}
+
+
 bool queue_IsEmpty(queue_t * queue)
 {
   assert(queue);
   if (queue->length == 0) return true;
   else return false;
 }
+
 
 machine_t * machine_ConstructMachine(const char * readfrom, policy_t policy, unsigned q)
 {
@@ -233,6 +290,7 @@ void machine_DestructMachine(machine_t * machine)
 
   free(machine);
 }
+
 
 void machine_CheckForArrivals(machine_t * machine)
 {
@@ -289,9 +347,7 @@ void machine_CheckForFinished(machine_t * machine)
 void machine_AllocateResources(machine_t * machine)
 {
   assert(machine);
-  
-  machine_CheckForArrivals(machine);
-  
+    
   if (machine->policy == RR)
   {
     task_t * rover = machine->active->front;

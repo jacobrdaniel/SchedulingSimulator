@@ -11,6 +11,7 @@ typedef enum PolicyType policy_t;
 typedef struct TaskType task_t;
 typedef struct QueueType queue_t;
 typedef struct MachineType machine_t;
+typedef struct ClusterType cluster_t;
 
 task_t * task_ConstructTask(int tid, int arrival, int service);
 void task_DestructTask(task_t * task);
@@ -70,8 +71,21 @@ struct MachineType
   queue_t * finished;
   
   unsigned quantum; // Time quantum (custom for RR, 1 otherwise).
-  size_t counter; // Internal counter to track simulation time
-  policy_t policy; 
+  size_t counter;   // Internal counter to track simulation time
+  policy_t policy;  // Scheduling policy of the machine
 };
+
+/**
+ * Data structure which provides abstraction for a computing cluster,
+ * allowing for multiple machines with their own scheduling policies to be 
+ * simulated as if they were running in parallel/concurrently.
+ */
+struct ClusterType
+{
+  machine_t ** machines;
+  size_t occupied;
+  size_t capacity;
+};
+
 
 # endif
