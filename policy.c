@@ -53,7 +53,7 @@ bool task_HasFinished(task_t * task)
 bool task_HasArrived(task_t * task, size_t currtime)
 {
   assert(task);
-  if (task->arrival >= currtime) return true;
+  if (task->arrival <= currtime) return true;
   else return false;
 }
 
@@ -138,22 +138,30 @@ void queue_InsertSJF(queue_t * queue, task_t * task)
     return queue_InsertFront(queue, task);
   
   task_t * rover = queue->front;
-  while (rover->rst < task->rst)
-    rover = rover->next;
+  while (rover)
+  {
+    if (rover->rst > task->rst)
+    {
+      if (rover == queue->front)
+        return queue_InsertFront(queue, task);
+      else
+      {
+        task->next = rover->next;
+        if (task->next)
+          task->next->prev = task;
+        
+        task->prev = rover->prev;
+        task->prev->next = task;
+        rover->prev = task;
+      }
+    }
+    else
+    {
+      rover = rover->next;
+    }
+  }
   
-  if (rover == queue->front)
-    return queue_InsertFront(queue, task);
-  else if (rover == queue->back)
-    return queue_InsertBack(queue, task);
-  
-  // Insert task before rover
-
-  task->next = rover;
-  task->prev = rover->prev;
-  task->prev->next = task;
-  rover->prev = task;
-
-  queue->length++;
+  return queue_InsertBack(queue, task);
 }
 
 
@@ -221,7 +229,9 @@ task_t * queue_RemoveIndex(queue_t * queue, size_t index)
   for (size_t i = 0; i < index; i++)
     rover = rover->next;
   
-  rover->next->prev = rover->prev;
+  if (rover->next)
+    rover->next->prev = rover->prev;
+  if (rover->prev)
   rover->prev->next = rover->next;
 
   rover->next = NULL;
@@ -257,7 +267,7 @@ machine_t * machine_ConstructMachine(const char * readfrom, policy_t policy, uns
   FILE * fileptr = fopen(readfrom, "r");
   int temp_service, temp_arrival, tid_counter;
 
-  while (fscanf(fileptr, "%d %d", &temp_service, &temp_arrival))
+  while (fscanf(fileptr, "%d %d", &temp_service, &temp_arrival) == 2)
   {
     tid_counter++;
     if (temp_arrival > 0)
@@ -307,12 +317,24 @@ void machine_CheckForArrivals(machine_t * machine)
     
     if (task_HasArrived(temp, machine->counter))
     {
-      temp = queue_RemoveIndex(machine->inactive, index);
+      task_t * removed;
+      if (temp == machine->inactive->front)
+        removed = queue_RemoveFront(machine->inactive);
+      else if (temp == machine->inactive->back)
+        removed = queue_RemoveBack(machine->inactive);
+      else
+      {
+        temp->prev->next = temp->next;
+        temp->next->prev = temp->prev;
+        removed = temp;
+      }
+
+
 
       if (machine->policy == SJF)
-        queue_InsertSJF(machine->active, temp);
+        queue_InsertSJF(machine->active, removed);
       else
-        queue_InsertBack(machine->active, temp);
+        queue_InsertBack(machine->active, removed);
     }
     index++;
   }
@@ -334,9 +356,20 @@ void machine_CheckForFinished(machine_t * machine)
 
     if (task_HasFinished(temp))
     {
-      temp = queue_RemoveIndex(machine->active, index);
+      task_t * removed;
+      if (temp == machine->active->front)
+        removed = queue_RemoveFront(machine->active);
+      else if (temp == machine->active->back)
+        removed = queue_RemoveBack(machine->active);
+      else
+      {
+        temp->prev->next = temp->next;
+        temp->next->prev = temp->prev;
+        removed = temp;
+      }
+
       // TODO: Write function to calculate statistics for performance metrics.
-      queue_InsertBack(machine->finished, temp);
+      queue_InsertBack(machine->finished, removed);
     }
 
     index++;

@@ -17,6 +17,7 @@ task_t * task_ConstructTask(int tid, int arrival, int service);
 void task_DestructTask(task_t * task);
 bool task_HasFinished(task_t * task);
 bool task_HasArrived(task_t * task, size_t currtime);
+void task_PrintStatistics(task_t * task);
 
 
 queue_t * queue_ConstructQueue(void);
@@ -35,6 +36,7 @@ void machine_CheckForArrivals(machine_t * machine);
 void machine_CheckForFinished(machine_t * machine);
 void machine_AllocateResources(machine_t * machine);
 void machine_PerformFullCycle(machine_t * machine);
+void machine_PrintSummaryStatistics(machine_t * machine);
 
 enum PolicyType
 {
